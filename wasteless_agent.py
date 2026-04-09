@@ -36,6 +36,12 @@ class WasteLessAgent:
             return "near expiry"
         return "fresh"
 
+    def _normalize_name(self, value):
+        """Normalize item names for safe case-insensitive comparisons."""
+        if isinstance(value, str):
+            return value.strip().lower()
+        return ""
+
     def analyze_items(self, items_list):
         """
         Analyze each item and suggest an action.
@@ -49,13 +55,15 @@ class WasteLessAgent:
         suggestions = []
 
         for item in items_list:
-            name = str(item.get("name", "unknown item"))
+            raw_name = item.get("name", "unknown item")
+            normalized_name = self._normalize_name(raw_name)
+            name = raw_name.strip() if normalized_name else "unknown item"
             days_left = item.get("days_left", 0)
 
             state = self._item_state(days_left)
 
             if state == "expired":
-                action = "avoid buying again"
+                action = "dispose safely"
             elif state == "near expiry":
                 action = "use soon"
             else:
@@ -80,14 +88,10 @@ class WasteLessAgent:
         - If same item exists but expired: buying is okay.
         - If item does not exist: buying is okay.
         """
-        new_item_name = str(new_item.get("name", "")).strip().lower()
-        new_item_days_left = new_item.get("days_left", 0)
-
-        if self._item_state(new_item_days_left) == "expired":
-            return "do not buy (selected new item is already expired)"
+        new_item_name = self._normalize_name(new_item.get("name", ""))
 
         for item in existing_items:
-            existing_name = str(item.get("name", "")).strip().lower()
+            existing_name = self._normalize_name(item.get("name", ""))
             existing_days_left = item.get("days_left", 0)
 
             if existing_name == new_item_name and self._item_state(existing_days_left) != "expired":
@@ -101,7 +105,7 @@ class WasteLessAgent:
 
         Possible outputs: "wet waste", "dry waste", "unknown"
         """
-        normalized_name = str(item_name).strip().lower()
+        normalized_name = self._normalize_name(item_name)
 
         if normalized_name in self._wet_waste_items:
             return "wet waste"
